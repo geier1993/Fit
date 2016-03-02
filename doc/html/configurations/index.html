@@ -1,0 +1,84 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+
+<meta name="author" content="Paul Fultz II">
+
+<title>Configurations - Boost.Fit</title>
+<link href="../css/boostbook.css" rel="stylesheet">
+<link href="../css/styles/github.css" rel="stylesheet">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../images/boost.png"></td>
+</tr></table>
+
+<hr>
+<div class="spirit-nav">
+<a accesskey="p"  href="../concepts/index.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n"  href="../requirements/index.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+
+<div class="chapter">
+
+
+<div class="toc">
+<dl class="toc">
+
+    
+        <dt><span class="section"><a href="#configurations">Configurations</a></span></dt>
+    
+
+</dl>
+</div>
+
+
+
+<div class="section">
+<h1 id="configurations">Configurations</h1>
+<p>There are several configuration that control the behavior in the Fit library.</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BOOST_FIT_CHECK_UNPACK_SEQUENCE</td>
+<td>Unpack has extra checks to ensure that the function will be invoked with the sequence. This extra check can help improve error reporting but it can slow down compilation. This is enabled by default.</td>
+</tr>
+<tr>
+<td>BOOST_FIT_NO_EXPRESSION_SFINAE</td>
+<td>This controls whether the Fit library will use expression SFINAE to detect the callability of functions. On MSVC, this is enabled by default, since it does not have full support for expression SFINAE.</td>
+</tr>
+<tr>
+<td>BOOST_FIT_RECURSIVE_CONSTEXPR_DEPTH</td>
+<td>Because C++ instantiates <code>constexpr</code> functions eagerly, recursion with <code>constexpr</code> functions can cause the compiler to reach its internal limits. The setting is used by Fit to set a limit on recursion depth to avoid infinite template instantiations. The default is 16, but increasing the limit can increase compile times.</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<script src="../js/highlight.pack.js"></script>
+<script>
+hljs.configure({languages:['cpp']});
+hljs.initHighlightingOnLoad();
+</script>
+<script src="../js/configure.js"></script>
+
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2014 Paul Fultz II
+      <p>Distributed under the Boost Software License, Version 1.0.
+      (See accompanying file <code class="filename">LICENSE_1_0.txt</code> or copy at 
+      <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+
+</div>
+</body>
+</html>

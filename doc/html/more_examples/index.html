@@ -1,0 +1,241 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+
+<meta name="author" content="Paul Fultz II">
+
+<title>More examples - Boost.Fit</title>
+<link href="../css/boostbook.css" rel="stylesheet">
+<link href="../css/styles/github.css" rel="stylesheet">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../images/boost.png"></td>
+</tr></table>
+
+<hr>
+<div class="spirit-nav">
+<a accesskey="p"  href="../quickstart/index.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n"  href="../overview/index.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+
+<div class="chapter">
+
+
+<div class="toc">
+<dl class="toc">
+
+    
+        <dt><span class="section"><a href="#more-examples">More examples</a></span></dt>
+        <dd><dl>
+            
+                <dt><span class="section"><a href="#initialization">Initialization</a></span></dt>
+            
+                <dt><span class="section"><a href="#conditional-overloading">Conditional overloading</a></span></dt>
+            
+                <dt><span class="section"><a href="#projections">Projections</a></span></dt>
+            
+                <dt><span class="section"><a href="#ordering-evaluation-of-arguments">Ordering evaluation of arguments</a></span></dt>
+            
+                <dt><span class="section"><a href="#varidiac-parameters">Varidiac parameters</a></span></dt>
+            
+                <dt><span class="section"><a href="#polymorphic-constructors">Polymorphic constructors</a></span></dt>
+            
+                <dt><span class="section"><a href="#extension-methods">Extension methods</a></span></dt>
+            
+        </dl></dd>
+    
+
+</dl>
+</div>
+
+
+
+<div class="section">
+<h1 id="more-examples">More examples</h1>
+<p>As the Fit library is a collection of generic utilities
+related to functions, there is many useful cases with the library, but a key
+point of many of these utilities is that they can solve these problems with
+much simpler constructs than whats traditionally been done with
+metaprogramming. Lets take look at some of the use cases for using the Fit library.</p>
+<h2 id="initialization">Initialization</h2>
+<p>The <a href="../function/index.html"><code>BOOST_FIT_STATIC_FUNCTION</code></a> will help initialize function objects at
+global scope, and will ensure that it is initialized at compile-time and (on
+platforms that support it) will have a unique address across translation
+units, thereby reducing executable bloat and potential ODR violations.</p>
+<p>In addition, <a href="../lambda/index.html"><code>BOOST_FIT_STATIC_LAMBDA_FUNCTION</code></a> allows initializing a lambda
+in the same manner. This allows for simple and compact function definitions
+when working with generic lambdas and function adaptors.</p>
+<p>Of course, the library can still be used without requiring global function
+objects for those who prefer to avoid them will still find the library useful.</p>
+<h2 id="conditional-overloading">Conditional overloading</h2>
+<p>Take a look at this example of defining a <code>stringify</code> function from
+stackoverflow <a href="http://stackoverflow.com/questions/30189926/metaprograming-failure-of-function-definition-defines-a-separate-function/30515874">here</a>.</p>
+<p>The user would like to write <code>stringify</code> to call <code>to_string</code> where applicable
+and fallback on using <code>sstream</code> to convert to a string. Most of the top
+answers usually involve some amount of metaprogramming using either <code>void_t</code>
+or <code>is_detected</code>(see <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4502.pdf">n4502</a>). However, with the Fit library it can simply be written like
+this:</p>
+<pre><code>BOOST_FIT_STATIC_LAMBDA_FUNCTION(stringify) = conditional(
+    [](auto x) BOOST_FIT_RETURNS(to_string(x)),
+    [](auto x) BOOST_FIT_RETURNS(static_cast&lt;ostringstream&amp;&gt;(ostringstream() &lt;&lt; x).str())
+);
+</code></pre>
+<p>In addition, this can be used with the <a href="../if/index.html"><code>boost::fit::if_</code></a> decorator to create <code>static_if</code>-like
+constructs. For example, Baptiste Wicht discusses how one could write <code>static_if</code> in C++ <a href="http://baptiste-wicht.com/posts/2015/07/simulate-static_if-with-c11c14.html">here</a>.</p>
+<p>He wants to be able to write this:</p>
+<pre><code>template&lt;typename T&gt;
+void decrement_kindof(T&amp; value){
+    static_if(std::is_same&lt;std::string, T&gt;::value){
+        value.pop_back();
+    } else {
+        --value;
+    }
+}
+</code></pre>
+<p>However, that isn't possible in C++. With the Fit library one can simply write
+this:</p>
+<pre><code>template&lt;typename T&gt;
+void decrement_kindof(T&amp; value)
+{
+    eval(conditional(
+        if_(std::is_same&lt;std::string, T&gt;())([&amp;](auto id){
+            id(value).pop_back();
+        }),
+        [&amp;](auto id){
+            --id(value);
+        }
+    ));
+}
+</code></pre>
+<p>The advantage of using the Fit library instead of the solution in Baptiste
+Wicht's blog, is that <a href="../conditional/index.html"><code>conditional</code></a> allows more than just two conditions. So if
+there was another trait to be checked, such as <code>is_stack</code>, it could be written
+like this:</p>
+<pre><code>template&lt;typename T&gt;
+void decrement_kindof(T&amp; value)
+{
+    eval(conditional(
+        if_(is_stack&lt;T&gt;())([&amp;](auto id){
+            id(value).pop();
+        }),
+        if_(std::is_same&lt;std::string, T&gt;())([&amp;](auto id){
+            id(value).pop_back();
+        }),
+        [&amp;](auto id){
+            --id(value);
+        }
+    ));
+}
+</code></pre>
+<p>Furthermore, this technique can be used to write type traits as well. Jens
+Weller was looking for a way to define a general purpose detection for pointer
+operands(such as <code>*</code> and <code>-&gt;</code>). One way to accomplish this is using Fit like
+this:</p>
+<pre><code>template&lt;class T&gt;
+auto has_pointer_member(const T&amp;) -&gt; decltype(
+    &amp;T::operator*,
+    &amp;T::operator-&gt;,
+    std::true_type{}
+);
+
+BOOST_FIT_STATIC_LAMBDA_FUNCTION(has_pointer_operators) = conditional(
+    BOOST_FIT_LIFT(has_pointer_member),
+    [](auto* x) -&gt; bool_constant&lt;(!std::is_void&lt;decltype(*x)&gt;())&gt; { return {}; },
+    always(std::false_type{})
+);
+
+template&lt;class T&gt;
+struct is_dereferenceable
+: decltype(has_pointer_operators(std::declval&lt;T&gt;()))
+{};
+</code></pre>
+<p>Which is much simpler than the other implementations that were written, which were
+about 3 times the amount of code(see <a href="https://gist.github.com/lefticus/6fdccb18084a1a3410d5">here</a>).</p>
+<h2 id="projections">Projections</h2>
+<p>Instead of writing the projection multiple times in algorithms:</p>
+<pre><code>std::sort(std::begin(people), std::end(people),
+          [](const Person&amp; a, const Person&amp; b) {
+            return a.year_of_birth &lt; b.year_of_birth;
+          });
+</code></pre>
+<p>We can use the <a href="../by/index.html"><code>by</code></a> adaptor to project <code>year_of_birth</code> on the comparison
+operator:</p>
+<pre><code>std::sort(std::begin(people), std::end(people),
+        by(&amp;Person::year_of_birth, _ &lt; _));
+</code></pre>
+<h2 id="ordering-evaluation-of-arguments">Ordering evaluation of arguments</h2>
+<p>When we write <code>f(foo(), bar())</code> there is no guarantee from the standard what
+order the arguments <code>foo()</code> and <code>bar()</code> are evaluated. So with <code>apply_eval</code> we
+can order them from left-to-right:</p>
+<p>apply_eval(f, [&amp;]{ return foo(); }, [&amp;]{ return bar(); });</p>
+<h2 id="varidiac-parameters">Varidiac parameters</h2>
+<p>As shown in the <a href="../quickstart/index.html">quick start guide</a> the <a href="../by/index.html"><code>by</code></a> adaptor can be used to apply a function to each
+argument, so we could write a simple varidiac print function like this:</p>
+<pre><code>BOOST_FIT_STATIC_FUNCTION(print) = by(std::cout &lt;&lt; _);
+</code></pre>
+<p>We can also take binary functions and turn them easily into varidiac functions
+as well using <a href="../compress/index.html"><code>compress</code></a>. So a varidiac <code>max</code> function could be written like
+this:</p>
+<pre><code>BOOST_FIT_STATIC_FUNCTION(max) = compress(BOOST_FIT_LIFT(std::max));
+</code></pre>
+<h2 id="polymorphic-constructors">Polymorphic constructors</h2>
+<p>Writing polymorphic constructors(such as <code>make_tuple</code>) is a boilerplate that
+has to be written over and over again for template classes. With <a href="../construct/index.html"><code>construct</code></a>
+this is easier. For example, <code>make_tuple</code> can be written simply as this:</p>
+<pre><code>BOOST_FIT_STATIC_FUNCTION(make_tuple) = construct&lt;std::tuple&gt;().by(decay());
+</code></pre>
+<h2 id="extension-methods">Extension methods</h2>
+<p>Chaining many function together, like what is done for range based libraries
+can make things hard to read:</p>
+<pre><code>auto r = transform(
+    filter(
+        numbers,
+        [](int x) { return x &gt; 2; }
+    ),
+    [](int x) { return x * x; }
+);
+</code></pre>
+<p>It would be nice to write this:</p>
+<pre><code>auto r = numbers
+    .filter([](int x) { return x &gt; 2; })
+    .transform([](int x) { return x * x; });
+</code></pre>
+<p>However, UFCS in C++17 won't allow this to be done generically. So instead
+pipable functions can be used. So it can be written like this:</p>
+<pre><code>auto r = numbers
+    | filter([](int x) { return x &gt; 2; })
+    | transform([](int x) { return x * x; });
+</code></pre>
+<p>Now, if some users feel a little worried about overloading the bit or
+operator, pipable functions can also be used with <a href="../flow/index.html"><code>flow</code></a> like this:</p>
+<pre><code>auto r = flow(
+    filter([](int x) { return x &gt; 2; }),
+    transform([](int x) { return x * x; })
+)(numbers);
+</code></pre>
+<p>No fancy or confusing operating overloading and everything is still quite
+readable.</p>
+</div>
+
+<script src="../js/highlight.pack.js"></script>
+<script>
+hljs.configure({languages:['cpp']});
+hljs.initHighlightingOnLoad();
+</script>
+<script src="../js/configure.js"></script>
+
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2014 Paul Fultz II
+      <p>Distributed under the Boost Software License, Version 1.0.
+      (See accompanying file <code class="filename">LICENSE_1_0.txt</code> or copy at 
+      <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+
+</div>
+</body>
+</html>
